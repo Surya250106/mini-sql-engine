@@ -43,7 +43,7 @@ No external libraries are needed — only the Python standard library.
 ### Clone the repository
 
 ```bash
-git clone <your-project-url>.git
+git clone https://github.com/Surya250106/mini-sql-engine.git
 cd mini-sql-engine
 ```
 
