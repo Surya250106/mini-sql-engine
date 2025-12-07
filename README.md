@@ -266,8 +266,6 @@ Potential improvements include:
 
 ---
 
-## Author
-
-Your Name  
+## Author 
 SURYA
 
