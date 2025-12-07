@@ -1,0 +1,4 @@
+product_id,product_name,price,stock_quantity
+101,Laptop,1200.0,15
+102,Office Chair,250.0,40
+103,Monitor,300.0,22

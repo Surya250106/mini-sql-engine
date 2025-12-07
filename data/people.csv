@@ -1,0 +1,4 @@
+employee_id,name,department,email
+1,Alice Johnson,HR,alice@example.com
+2,Bob Smith,Engineering,bob@example.com
+3,Carol Lee,Sales,carol@example.com
