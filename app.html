@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mini SQL Engine – Playground</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Chart.js CDN for visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* --- same design system as before --- */
+    :root {
+      --bg: #f3f4f6;
+      --bg-alt: #e5e7eb;
+      --bg-card: #ffffff;
+      --border-subtle: #d1d5db;
+      --accent: #4f46e5;
+      --accent-soft: rgba(79, 70, 229, 0.08);
+      --accent2: #16a34a;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --danger: #b91c1c;
+      --success: #15803d;
+      --code-bg: #e5e7eb;
+      --shadow-soft: 0 14px 35px rgba(15, 23, 42, 0.08);
+    }
+    [data-theme="dark"] {
+      --bg: #020617;
+      --bg-alt: #020617;
+      --bg-card: #020617;
+      --border-subtle: #111827;
+      --accent: #4f46e5;
+      --accent-soft: rgba(79, 70, 229, 0.18);
+      --accent2: #22c55e;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #fca5a5;
+      --success: #86efac;
+      --code-bg: #111827;
+      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.65);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    [data-theme="dark"] header {
+      background: #020617;
+      border-color: #111827;
+    }
+    .nav {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0.7rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 0.8rem;
+      background: conic-gradient(from 220deg, #4f46e5, #22c55e, #06b6d4, #4f46e5);
+      box-shadow: 0 0 18px rgba(79, 70, 229, 0.5);
+    }
+    .nav-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+    .nav-title h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .nav-title span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .nav-right {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .nav-link {
+      font-size: 0.78rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-card);
+    }
+    .nav-link:hover { background: var(--bg-alt); }
+    .theme-toggle {
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      padding: 0.25rem 0.7rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .theme-toggle span.icon { font-size: 0.9rem; }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.3rem 1.5rem 2.5rem;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr);
+      gap: 1.2rem;
+      margin-bottom: 1.3rem;
+    }
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      header { padding: 0; }
+      main { padding: 1rem; }
+    }
+    .hero-text h2 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+    .hero-text p {
+      margin: 0.4rem 0 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+    }
+    .meta-pill {
+      font-size: 0.75rem;
+      padding: 0.1rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      color: var(--text-muted);
+    }
+    .hero-tip {
+      font-size: 0.8rem;
+      border-radius: 0.75rem;
+      border: 1px dashed var(--border-subtle);
+      padding: 0.6rem 0.7rem;
+      background: linear-gradient(to right, var(--accent-soft), transparent);
+      margin-top: 0.7rem;
+    }
+    .hero-tip code {
+      background: var(--code-bg);
+      padding: 0.15rem 0.3rem;
+      border-radius: 0.25rem;
+      font-size: 0.78rem;
+    }
+    .hero-facts {
+      border-radius: 0.9rem;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      box-shadow: var(--shadow-soft);
+      padding: 0.9rem 1rem;
+      font-size: 0.85rem;
+    }
+    .fact-title {
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+    .fact-body {
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+    .fact-refresh {
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      padding: 0.22rem 0.6rem;
+      cursor: pointer;
+    }
+    .fact-refresh:hover {
+      background: var(--bg-alt);
+      color: var(--text-main);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 2.2fr);
+      gap: 1.1rem;
+    }
+    @media (max-width: 1024px) {
+      .grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    .stack { display: grid; gap: 1rem; }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 0.9rem;
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-soft);
+      padding: 0.9rem 1rem;
+      transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+    }
+    .card:hover {
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+      transform: translateY(-1px);
+    }
+    [data-theme="dark"] .card:hover {
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.85);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .card-header h3 {
+      margin: 0;
+      font-size: 0.98rem;
+      font-weight: 600;
+    }
+    .card-subtitle {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    input[type="file"] {
+      margin-top: 0.2rem;
+      font-size: 0.8rem;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.4rem;
+    }
+    .chip {
+      border-radius: 999px;
+      padding: 0.2rem 0.7rem;
+      border: 1px solid var(--border-subtle);
+      font-size: 0.75rem;
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease, transform 0.06s ease;
+    }
+    .chip:hover {
+      background: var(--bg-alt);
+      color: var(--text-main);
+      border-color: var(--accent);
+      transform: translateY(-0.5px);
+    }
+
+    .status {
+      font-size: 0.78rem;
+      margin-top: 0.3rem;
+      color: var(--text-muted);
+    }
+    .status strong { color: var(--text-main); }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      resize: vertical;
+      border-radius: 0.55rem;
+      border: 1px solid var(--border-subtle);
+      padding: 0.7rem 0.75rem;
+      font-size: 0.9rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: var(--bg);
+      color: var(--text-main);
+      box-sizing: border-box;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-soft);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.7rem;
+    }
+
+    button.btn-primary {
+      border: none;
+      border-radius: 999px;
+      padding: 0.45rem 1.1rem;
+      font-size: 0.86rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      font-weight: 500;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.15s ease;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.25);
+    }
+    button.btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.25);
+    }
+    button.btn-primary:active {
+      transform: translateY(1px);
+      box-shadow: 0 6px 15px rgba(15, 23, 42, 0.2);
+    }
+    button.btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    button.btn-ghost, button.btn-mini {
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+    button.btn-mini {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+    }
+    button.btn-ghost:hover, button.btn-mini:hover {
+      background: var(--bg-alt);
+      color: var(--text-main);
+    }
+
+    .pill {
+      padding: 0.2rem 0.75rem;
+      border-radius: 999px;
+      background: var(--bg-alt);
+      border: 1px dashed var(--border-subtle);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .error {
+      color: var(--danger);
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.8rem;
+      margin-top: 0.4rem;
+    }
+    .success {
+      color: var(--success);
+      font-size: 0.8rem;
+      margin-top: 0.35rem;
+    }
+
+    .tab-bar {
+      display: inline-flex;
+      gap: 0.35rem;
+      margin-top: 0.4rem;
+      background: var(--bg-alt);
+      border-radius: 999px;
+      padding: 0.15rem;
+    }
+    .tab {
+      font-size: 0.78rem;
+      padding: 0.2rem 0.8rem;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .tab.active {
+      background: var(--bg-card);
+      color: var(--text-main);
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.12);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    th, td {
+      border: 1px solid var(--border-subtle);
+      padding: 0.35rem 0.5rem;
+      text-align: left;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    th {
+      background: var(--bg-alt);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-weight: 500;
+    }
+    tbody tr:nth-child(odd) { background: var(--bg-card); }
+    tbody tr:nth-child(even) { background: var(--bg); }
+    .scroll-container {
+      max-height: 360px;
+      overflow: auto;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      margin-top: 0.5rem;
+    }
+    pre.raw-output {
+      margin: 0;
+      padding: 0.6rem;
+      font-size: 0.8rem;
+      background: var(--bg);
+      color: var(--text-main);
+      overflow: auto;
+      white-space: pre;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      margin-top: 0.4rem;
+    }
+    .stat-pill {
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-alt);
+      color: var(--text-muted);
+    }
+
+    .mini-list {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding-left: 1.1rem;
+      margin: 0.45rem 0 0;
+    }
+    .mini-list li { margin-bottom: 0.18rem; }
+
+    .schema-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 0.4rem;
+    }
+    .schema-table th, .schema-table td {
+      border: 1px solid var(--border-subtle);
+      padding: 0.25rem 0.45rem;
+      text-align: left;
+    }
+    .column-chip {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 2px;
+    }
+
+    .missions-list {
+      margin: 0.4rem 0 0;
+      padding-left: 1.1rem;
+      font-size: 0.78rem;
+    }
+    .missions-list li { margin-bottom: 0.2rem; }
+    .mission-complete { color: var(--success); }
+
+    .saved-list {
+      font-size: 0.78rem;
+      margin-top: 0.35rem;
+      max-height: 160px;
+      overflow: auto;
+      border-radius: 0.5rem;
+      border: 1px dashed var(--border-subtle);
+      padding: 0.3rem 0.4rem;
+    }
+    .saved-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.15rem 0.15rem;
+      border-bottom: 1px dashed var(--border-subtle);
+    }
+    .saved-item:last-child { border-bottom: none; }
+    .saved-name {
+      cursor: pointer;
+      color: var(--text-main);
+    }
+    .saved-name:hover { text-decoration: underline; }
+
+    .history-list {
+      font-size: 0.78rem;
+      max-height: 160px;
+      overflow: auto;
+      border-radius: 0.5rem;
+      border: 1px dashed var(--border-subtle);
+      padding: 0.3rem 0.4rem;
+      margin-top: 0.3rem;
+    }
+    .history-item {
+      padding: 0.3rem 0.35rem;
+      border-radius: 0.4rem;
+      cursor: pointer;
+      margin-bottom: 0.2rem;
+    }
+    .history-item:hover { background: var(--bg-alt); }
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      margin-bottom: 0.05rem;
+    }
+
+    /* Cheat sheet panel */
+    .cheat-sheet-toggle {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 30;
+    }
+    .cheat-panel {
+      position: fixed;
+      right: 0;
+      top: 0;
+      height: 100%;
+      width: 280px;
+      max-width: 90%;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border-subtle);
+      box-shadow: -12px 0 32px rgba(15, 23, 42, 0.4);
+      transform: translateX(100%);
+      transition: transform 0.2s ease;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+    }
+    .cheat-panel.open { transform: translateX(0); }
+    .cheat-header {
+      padding: 0.8rem 0.9rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    .cheat-body {
+      padding: 0.8rem 0.9rem;
+      font-size: 0.8rem;
+      overflow: auto;
+    }
+    .cheat-body code {
+      display: block;
+      background: var(--code-bg);
+      padding: 0.25rem 0.35rem;
+      border-radius: 0.2rem;
+      margin-bottom: 0.35rem;
+    }
+
+    /* Chart container */
+    .chart-container {
+      margin-top: 0.7rem;
+      border-radius: 0.75rem;
+      border: 1px dashed var(--border-subtle);
+      padding: 0.5rem 0.6rem;
+      background: var(--bg-alt);
+      display: none;
+    }
+    .chart-container.visible {
+      display: block;
+    }
+    .chart-title {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <div class="nav-left">
+      <div class="logo-mark"></div>
+      <div class="nav-title">
+        <h1>Mini SQL Engine – Playground</h1>
+        <span>Upload CSV · Write SQL · Explore results and charts</span>
+      </div>
+    </div>
+    <div class="nav-right">
+      <a href="index.html" class="nav-link">← Back to landing</a>
+      <button id="themeToggle" class="theme-toggle" type="button">
+        <span class="icon">☀️</span><span id="themeLabel">Light</span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-text">
+      <h2>Interactive data workspace</h2>
+      <p>
+        Load a dataset, write a SQL query, and see the output as a table, JSON, CSV, or a quick chart.
+        Everything runs entirely in-memory.
+      </p>
+      <div class="hero-meta">
+        <span class="meta-pill">WHERE · GROUP BY · ORDER BY</span>
+        <span class="meta-pill">COUNT · SUM · AVG · MIN · MAX</span>
+      </div>
+      <div class="hero-tip">
+        Start simple with <code>SELECT * FROM people;</code> then try:
+        <code>SELECT department, COUNT(*) FROM people GROUP BY department ORDER BY COUNT(*) DESC;</code>
+      </div>
+    </div>
+    <div class="hero-facts">
+      <div class="fact-title" id="factTitle"></div>
+      <div class="fact-body" id="factBody"></div>
+      <button class="fact-refresh" id="nextFactBtn" type="button">Show another fact</button>
+    </div>
+  </section>
+
+  <section class="grid">
+    <!-- Left column -->
+    <div class="stack">
+      <!-- Data sources -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>1. Data sources</h3>
+            <p class="card-subtitle">Use your own CSV or a sample dataset.</p>
+          </div>
+        </div>
+        <div style="margin-top:0.5rem;">
+          <label for="csvFile">Upload CSV file:</label>
+          <input type="file" id="csvFile" accept=".csv" />
+          <div class="status" id="loadStatus">No file loaded.</div>
+        </div>
+        <div style="margin-top:0.7rem;">
+          <label>Sample datasets:</label>
+          <div class="chip-row">
+            <button class="chip" type="button" data-sample="people">People (HR)</button>
+            <button class="chip" type="button" data-sample="sales">Sales</button>
+          </div>
+        </div>
+        <ul class="mini-list">
+          <li>First row must contain column headers.</li>
+          <li>Assumes no commas inside values (simple CSV).</li>
+          <li>Table name is derived from file name (e.g. <code>people.csv</code> → <code>people</code>).</li>
+        </ul>
+      </div>
+
+      <!-- Schema & missions -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>2. Schema & missions</h3>
+            <p class="card-subtitle">Understand your data and practice SQL patterns.</p>
+          </div>
+        </div>
+        <div id="schemaInspector" style="margin-top:0.4rem; font-size:0.8rem;">
+          <p style="margin:0; color:var(--text-muted);">Load a dataset to inspect its columns.</p>
+        </div>
+        <hr style="border-color:var(--border-subtle); margin:0.7rem 0;" />
+        <div>
+          <p class="card-subtitle" style="margin-bottom:0.2rem;"><strong>SQL missions 🎯</strong></p>
+          <ul class="missions-list" id="missionsList"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="stack">
+      <!-- SQL workspace -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>3. SQL workspace</h3>
+            <p class="card-subtitle">
+              Grammar: <code class="inline">SELECT ... FROM table [WHERE ...] [GROUP BY col] [ORDER BY col [ASC|DESC]];</code>
+            </p>
+          </div>
+        </div>
+        <label for="sqlInput" style="margin-top:0.3rem;">SQL editor:</label>
+        <textarea id="sqlInput" placeholder="Examples:
+SELECT * FROM people;
+SELECT name, department FROM people ORDER BY name ASC;
+SELECT department, COUNT(*) FROM people GROUP BY department ORDER BY COUNT(*) DESC;
+SELECT department, AVG(salary) FROM people WHERE salary > 50000 GROUP BY department;
+SELECT COUNT(*) FROM people;"></textarea>
+        <div class="controls">
+          <button id="runBtn" class="btn-primary" disabled>Run query (Ctrl+Enter)</button>
+          <button id="explainBtn" class="btn-ghost" type="button">Explain query</button>
+          <span class="pill">Shortcuts: Ctrl+Enter · Ctrl+L · Ctrl+/</span>
+        </div>
+        <div id="queryStatus" class="status"></div>
+        <div id="sampleQueries" class="chip-row" style="margin-top:0.55rem;"></div>
+        <div id="suggestions" class="chip-row" style="margin-top:0.4rem;"></div>
+      </div>
+
+      <!-- Results -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>4. Results</h3>
+            <p class="card-subtitle">View your output as a table, JSON, CSV, or chart.</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <div class="tab-bar">
+              <button class="tab active" data-view="table" type="button">Table</button>
+              <button class="tab" data-view="json" type="button">JSON</button>
+              <button class="tab" data-view="csv" type="button">CSV</button>
+            </div>
+            <button id="chartBtn" class="btn-mini" type="button" disabled>Visualize</button>
+          </div>
+        </div>
+        <div class="stats-row" id="statsRow"></div>
+        <div id="error" class="error"></div>
+        <div id="success" class="success"></div>
+        <div class="scroll-container" id="tableContainer">
+          <p style="font-size:0.8rem; color:var(--text-muted); padding:0.6rem; margin:0;">
+            Run a query to see results here.
+          </p>
+        </div>
+        <div id="chartContainer" class="chart-container">
+          <div class="chart-title" id="chartTitle">Chart will appear here when data is suitable.</div>
+          <canvas id="resultChart" height="160"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom row: activity -->
+  <section style="margin-top:1.1rem; display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(0, 1.5fr); gap:1rem;">
+    <!-- Saved queries -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3>5. Saved queries</h3>
+          <p class="card-subtitle">Build your own query library.</p>
+        </div>
+      </div>
+      <label for="saveName">Name:</label>
+      <div style="display:flex; gap:0.4rem; margin-top:0.25rem;">
+        <input id="saveName" type="text" style="flex:1; border-radius:999px; border:1px solid var(--border-subtle); background:var(--bg-card); color:var(--text-main); font-size:0.8rem; padding:0.3rem 0.6rem;" placeholder="e.g. Department counts" />
+        <button id="saveQueryBtn" class="btn-mini" type="button">Save</button>
+      </div>
+      <div class="status" style="margin-top:0.4rem;">Click a name below to restore its SQL:</div>
+      <div id="savedQueries" class="saved-list"></div>
+    </div>
+
+    <!-- History -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3>6. Activity</h3>
+          <p class="card-subtitle">Recent queries with timing and row counts.</p>
+        </div>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Cheat sheet -->
+<div class="cheat-sheet-toggle">
+  <button id="cheatToggleBtn" class="btn-ghost" type="button">SQL cheat sheet ⌘/Ctrl + /</button>
+</div>
+
+<div id="cheatPanel" class="cheat-panel">
+  <div class="cheat-header">
+    <span>SQL Cheat Sheet</span>
+    <button id="cheatCloseBtn" class="btn-mini" type="button">Close</button>
+  </div>
+  <div class="cheat-body">
+    <p><strong>Basic patterns</strong></p>
+    <code>SELECT * FROM table;</code>
+    <code>SELECT col1, col2 FROM table WHERE col1 = 'value';</code>
+    <code>SELECT col, COUNT(*) FROM table GROUP BY col;</code>
+    <code>SELECT col, AVG(num) FROM table GROUP BY col ORDER BY AVG(num) DESC;</code>
+    <code>SELECT col1, col2 FROM table ORDER BY col1 ASC;</code>
+    <p><strong>Aggregates</strong></p>
+    <ul>
+      <li><code>COUNT(*)</code>, <code>COUNT(col)</code></li>
+      <li><code>SUM(col)</code>, <code>AVG(col)</code>, <code>MIN(col)</code>, <code>MAX(col)</code></li>
+    </ul>
+    <p><strong>Conditions</strong></p>
+    <ul>
+      <li>Operators: <code>=</code>, <code>!=</code>, <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code></li>
+      <li>Strings must be quoted: <code>country = 'USA'</code></li>
+      <li>Numbers are unquoted: <code>age &gt; 30</code></li>
+    </ul>
+    <p><strong>Shortcuts</strong></p>
+    <ul>
+      <li><code>Ctrl+Enter</code> – Run query</li>
+      <li><code>Ctrl+L</code> – Focus editor</li>
+      <li><code>Ctrl+/</code> – Toggle this cheat sheet</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  // ---------- State ----------
+  let currentTable = null;
+  let currentResult = { columns: [], rows: [] };
+  let currentView = "table";
+  let history = [];
+  let savedQueries = [];
+  let missionStatus = {};
+  let chartInstance = null;
+
+  const fileInput = document.getElementById("csvFile");
+  const loadStatus = document.getElementById("loadStatus");
+  const sqlInput = document.getElementById("sqlInput");
+  const runBtn = document.getElementById("runBtn");
+  const explainBtn = document.getElementById("explainBtn");
+  const queryStatus = document.getElementById("queryStatus");
+  const errorDiv = document.getElementById("error");
+  const successDiv = document.getElementById("success");
+  const tableContainer = document.getElementById("tableContainer");
+  const statsRow = document.getElementById("statsRow");
+  const suggestionsDiv = document.getElementById("suggestions");
+  const themeToggle = document.getElementById("themeToggle");
+  const themeLabel = document.getElementById("themeLabel");
+  const cheatPanel = document.getElementById("cheatPanel");
+  const cheatToggleBtn = document.getElementById("cheatToggleBtn");
+  const cheatCloseBtn = document.getElementById("cheatCloseBtn");
+  const chartBtn = document.getElementById("chartBtn");
+  const chartContainer = document.getElementById("chartContainer");
+  const chartTitle = document.getElementById("chartTitle");
+  const chartCanvas = document.getElementById("resultChart");
+
+  const factTitleEl = document.getElementById("factTitle");
+  const factBodyEl = document.getElementById("factBody");
+  const nextFactBtn = document.getElementById("nextFactBtn");
+  const sampleQueriesContainer = document.getElementById("sampleQueries");
+  const schemaInspector = document.getElementById("schemaInspector");
+  const missionsList = document.getElementById("missionsList");
+  const historyList = document.getElementById("historyList");
+  const saveNameInput = document.getElementById("saveName");
+  const saveQueryBtn = document.getElementById("saveQueryBtn");
+  const savedQueriesContainer = document.getElementById("savedQueries");
+
+  const funFacts = [
+    {
+      title: "SQL is older than many languages.",
+      body: "The first SQL spec appeared in the 1970s—before Python, JavaScript, or even C++ existed."
+    },
+    {
+      title: "SELECT * is convenient, but...",
+      body: "In production, selecting only needed columns reduces network and compute cost significantly."
+    },
+    {
+      title: "COUNT(*) vs COUNT(column)",
+      body: "COUNT(*) counts rows; COUNT(column) ignores rows where that column is NULL or empty."
+    },
+    {
+      title: "GROUP BY = buckets",
+      body: "GROUP BY groups rows with the same value and then aggregates over each group."
+    },
+    {
+      title: "ORDER BY is last",
+      body: "ORDER BY is applied after filters, grouping, and aggregation, shaping the final row order."
+    }
+  ];
+
+  const sampleDatasets = {
+    people: `id,name,department,salary,country
+1,Alice,HR,50000,USA
+2,Bob,Engineering,75000,Canada
+3,Charlie,Sales,62000,USA
+4,Diana,Engineering,88000,UK
+5,Eric,HR,54000,Germany
+6,Farah,Sales,70000,USA
+7,Gina,Engineering,92000,India
+`,
+    sales: `order_id,customer,amount,country,channel
+1001,Alice,50.5,USA,Online
+1002,Bob,20.0,Canada,Store
+1003,Charlie,99.9,USA,Online
+1004,Diana,15.0,UK,Store
+1005,Eric,75.0,Germany,Online
+1006,Farah,120.0,USA,Online
+1007,Gina,45.0,India,Store
+`
+  };
+
+  const missions = [
+    {
+      id: "groupByCount",
+      description: "Find how many rows are in each distinct value using GROUP BY and COUNT.",
+      check: (parsed, result) =>
+        parsed.groupBy && parsed.selectItems.some(i => i.type === "agg" && i.func === "COUNT")
+    },
+    {
+      id: "orderByDesc",
+      description: "Run a query that uses ORDER BY ... DESC.",
+      check: (parsed) =>
+        parsed.orderBy && parsed.orderBy.direction === "DESC"
+    },
+    {
+      id: "useAvg",
+      description: "Compute an AVG(...) aggregate on a numeric column.",
+      check: (parsed) =>
+        parsed.selectItems.some(i => i.type === "agg" && i.func === "AVG")
+    },
+    {
+      id: "whereFilter",
+      description: "Use a WHERE clause to filter rows.",
+      check: (parsed) =>
+        !!parsed.where
+    }
+  ];
+
+  const sampleQueryTemplates = [
+    "SELECT * FROM {table};",
+    "SELECT {col1}, {col2} FROM {table} ORDER BY {col1} ASC;",
+    "SELECT {col1}, COUNT(*) FROM {table} GROUP BY {col1} ORDER BY COUNT(*) DESC;",
+    "SELECT COUNT(*) FROM {table};",
+    "SELECT {col1}, AVG({col2}) FROM {table} GROUP BY {col1} ORDER BY AVG({col2}) DESC;"
+  ];
+
+  // ---------- Theme ----------
+  function initTheme() {
+    const stored = localStorage.getItem("miniSqlTheme");
+    if (stored === "light" || stored === "dark") {
+      document.documentElement.setAttribute("data-theme", stored);
+    }
+    updateThemeLabel();
+  }
+  function updateThemeLabel() {
+    const theme = document.documentElement.getAttribute("data-theme");
+    if (theme === "dark") {
+      themeLabel.textContent = "Dark";
+      themeToggle.querySelector(".icon").textContent = "🌙";
+    } else {
+      themeLabel.textContent = "Light";
+      themeToggle.querySelector(".icon").textContent = "☀️";
+    }
+  }
+  themeToggle.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme");
+    const next = current === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("miniSqlTheme", next);
+    updateThemeLabel();
+  });
+
+  // ---------- Cheat Sheet ----------
+  function setCheatPanel(open) {
+    if (open) cheatPanel.classList.add("open");
+    else cheatPanel.classList.remove("open");
+  }
+  cheatToggleBtn.addEventListener("click", () => {
+    setCheatPanel(!cheatPanel.classList.contains("open"));
+  });
+  cheatCloseBtn.addEventListener("click", () => setCheatPanel(false));
+
+  // ---------- Fun facts ----------
+  function refreshFact() {
+    const idx = Math.floor(Math.random() * funFacts.length);
+    const fact = funFacts[idx];
+    factTitleEl.textContent = fact.title;
+    factBodyEl.textContent = fact.body;
+  }
+  nextFactBtn.addEventListener("click", refreshFact);
+
+  // ---------- Sample queries ----------
+  function buildSampleQueryChips() {
+    sampleQueriesContainer.innerHTML = "";
+    const placeholderTable = currentTable ? currentTable.name : "people";
+    const cols = currentTable ? currentTable.columns : ["department", "salary"];
+    const col1 = cols[0] || "col1";
+    const col2 = cols[1] || "col2";
+
+    const queries = sampleQueryTemplates.map(t =>
+      t
+        .replaceAll("{table}", placeholderTable)
+        .replaceAll("{col1}", col1)
+        .replaceAll("{col2}", col2)
+    );
+
+    queries.forEach(q => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = q.replace(/\s+/g, " ").trim();
+      chip.addEventListener("click", () => {
+        sqlInput.value = q;
+        sqlInput.focus();
+      });
+      sampleQueriesContainer.appendChild(chip);
+    });
+  }
+
+  // ---------- CSV & sample data ----------
+  fileInput.addEventListener("change", handleFile);
+  document.querySelectorAll("[data-sample]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-sample");
+      const csvText = sampleDatasets[key];
+      if (!csvText) return;
+      try {
+        const table = parseCSV(key + ".csv", csvText);
+        setCurrentTable(table, `Loaded sample dataset '${key}'.`);
+      } catch (err) {
+        loadStatus.textContent = "Error loading sample: " + err.message;
+      }
+    });
+  });
+
+  function handleFile() {
+    const file = fileInput.files[0];
+    if (!file) {
+      currentTable = null;
+      loadStatus.textContent = "No file loaded.";
+      runBtn.disabled = true;
+      buildSampleQueryChips();
+      schemaInspector.innerHTML = "<p style='margin:0; color:var(--text-muted);'>Load a dataset to inspect its columns.</p>";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const table = parseCSV(file.name, text);
+        setCurrentTable(table, `Loaded file '${file.name}'.`);
+      } catch (err) {
+        currentTable = null;
+        runBtn.disabled = true;
+        loadStatus.textContent = "Error loading file: " + err.message;
+      }
+    };
+    reader.onerror = () => {
+      currentTable = null;
+      runBtn.disabled = true;
+      loadStatus.textContent = "Error reading file.";
+    };
+    reader.readAsText(file);
+  }
+
+  function parseCSV(filename, text) {
+    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length === 0) throw new Error("Empty CSV file.");
+    const headerLine = lines[0];
+    const columns = headerLine.split(",").map(h => h.trim());
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      const parts = line.split(",");
+      const row = {};
+      for (let j = 0; j < columns.length; j++) {
+        row[columns[j]] = (parts[j] !== undefined) ? parts[j].trim() : "";
+      }
+      rows.push(row);
+    }
+    const base = filename.replace(/^.*[\\/]/, "");
+    const name = base.replace(/\.csv$/i, "");
+    return { name, columns, rows };
+  }
+
+  function setCurrentTable(table, message) {
+    currentTable = table;
+    runBtn.disabled = false;
+    loadStatus.innerHTML =
+      "<strong>Loaded:</strong> " + table.name +
+      " (" + table.rows.length + " rows, " + table.columns.length + " columns). Use <code>" +
+      table.name + "</code> as the table name in your queries.";
+    clearOutput();
+    buildSampleQueryChips();
+    computeSchema();
+    initMissions();
+    queryStatus.textContent = message;
+  }
+
+  // ---------- Schema ----------
+  function computeSchema() {
+    if (!currentTable) {
+      schemaInspector.innerHTML = "<p style='margin:0; color:var(--text-muted);'>Load a dataset to inspect its columns.</p>";
+      return;
+    }
+    const { columns, rows } = currentTable;
+    const info = columns.map(col => {
+      let numCount = 0, nonEmpty = 0, nullCount = 0;
+      const examples = new Set();
+      for (const r of rows) {
+        const v = r[col];
+        if (v === "" || v == null) {
+          nullCount++;
+        } else {
+          nonEmpty++;
+          const n = Number(v);
+          if (!Number.isNaN(n) && v.match(/^[+-]?\d+(\.\d+)?$/)) numCount++;
+          if (examples.size < 3) examples.add(v);
+        }
+      }
+      const type = numCount === nonEmpty && nonEmpty > 0 ? "number" : "string/mixed";
+      return { col, type, nullCount, nonEmpty, examples: Array.from(examples) };
+    });
+
+    let html = "<table class='schema-table'><thead><tr><th>Column</th><th>Type (guessed)</th><th>Non-empty</th><th>Null/Empty</th><th>Examples</th></tr></thead><tbody>";
+    info.forEach(i => {
+      html += "<tr>";
+      html += "<td><span class='column-chip' data-col='" + escapeHTML(i.col) + "'>" + escapeHTML(i.col) + "</span></td>";
+      html += "<td>" + escapeHTML(i.type) + "</td>";
+      html += "<td>" + i.nonEmpty + "</td>";
+      html += "<td>" + i.nullCount + "</td>";
+      html += "<td>" + escapeHTML(i.examples.join(", ")) + "</td>";
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    schemaInspector.innerHTML = html;
+
+    schemaInspector.querySelectorAll(".column-chip").forEach(el => {
+      el.addEventListener("click", () => {
+        const col = el.getAttribute("data-col");
+        const tableName = currentTable.name;
+        sqlInput.value = `SELECT ${col} FROM ${tableName} ORDER BY ${col} ASC;`;
+        sqlInput.focus();
+      });
+    });
+  }
+
+  // ---------- Missions ----------
+  function initMissions() {
+    missionStatus = JSON.parse(localStorage.getItem("miniSqlMissions") || "{}");
+    renderMissions();
+  }
+  function renderMissions() {
+    missionsList.innerHTML = "";
+    missions.forEach(m => {
+      const li = document.createElement("li");
+      li.textContent = m.description;
+      if (missionStatus[m.id]) {
+        li.classList.add("mission-complete");
+        li.textContent += " ✓";
+      }
+      missionsList.appendChild(li);
+    });
+  }
+  function evaluateMissions(parsed, result) {
+    let updated = false;
+    missions.forEach(m => {
+      if (missionStatus[m.id]) return;
+      try {
+        if (m.check(parsed, result)) {
+          missionStatus[m.id] = true;
+          updated = true;
+        }
+      } catch {}
+    });
+    if (updated) {
+      localStorage.setItem("miniSqlMissions", JSON.stringify(missionStatus));
+      renderMissions();
+    }
+  }
+
+  // ---------- Saved queries ----------
+  function loadSavedQueries() {
+    try {
+      savedQueries = JSON.parse(localStorage.getItem("miniSqlSavedQueries") || "[]");
+      if (!Array.isArray(savedQueries)) savedQueries = [];
+    } catch {
+      savedQueries = [];
+    }
+    renderSavedQueries();
+  }
+  function renderSavedQueries() {
+    savedQueriesContainer.innerHTML = "";
+    if (savedQueries.length === 0) {
+      savedQueriesContainer.innerHTML = "<div style='color:var(--text-muted);'>No saved queries yet.</div>";
+      return;
+    }
+    savedQueries.forEach((q, idx) => {
+      const div = document.createElement("div");
+      div.className = "saved-item";
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "saved-name";
+      nameSpan.textContent = q.name;
+      nameSpan.title = q.sql;
+      nameSpan.addEventListener("click", () => {
+        sqlInput.value = q.sql;
+        sqlInput.focus();
+      });
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn-mini";
+      delBtn.textContent = "×";
+      delBtn.title = "Delete saved query";
+      delBtn.addEventListener("click", () => {
+        savedQueries.splice(idx, 1);
+        localStorage.setItem("miniSqlSavedQueries", JSON.stringify(savedQueries));
+        renderSavedQueries();
+      });
+      div.appendChild(nameSpan);
+      div.appendChild(delBtn);
+      savedQueriesContainer.appendChild(div);
+    });
+  }
+  saveQueryBtn.addEventListener("click", () => {
+    const name = saveNameInput.value.trim();
+    const sql = sqlInput.value.trim();
+    if (!name) {
+      alert("Please enter a name for the query.");
+      return;
+    }
+    if (!sql) {
+      alert("Cannot save an empty query.");
+      return;
+    }
+    savedQueries.push({ name, sql });
+    localStorage.setItem("miniSqlSavedQueries", JSON.stringify(savedQueries));
+    saveNameInput.value = "";
+    renderSavedQueries();
+  });
+
+  // ---------- History ----------
+  function addToHistory(sql, stats, error = null) {
+    const entry = {
+      sql,
+      time: new Date().toLocaleTimeString(),
+      rowsReturned: stats.rowsReturned,
+      durationMs: stats.durationMs,
+      error: !!error
+    };
+    history.unshift(entry);
+    if (history.length > 50) history.pop();
+    renderHistory();
+  }
+  function renderHistory() {
+    historyList.innerHTML = "";
+    if (history.length === 0) {
+      historyList.innerHTML = "<div style='color:var(--text-muted);'>No history yet.</div>";
+      return;
+    }
+    history.forEach(h => {
+      const div = document.createElement("div");
+      div.className = "history-item";
+      div.addEventListener("click", () => {
+        sqlInput.value = h.sql;
+        sqlInput.focus();
+      });
+      const meta = document.createElement("div");
+      meta.className = "history-meta";
+      const left = document.createElement("span");
+      left.textContent = h.time + " · " + h.rowsReturned + " rows";
+      const right = document.createElement("span");
+      right.textContent = h.error ? "⚠️ error" : "✅ ok";
+      meta.appendChild(left);
+      meta.appendChild(right);
+      const sqlShort = h.sql.length > 80 ? h.sql.slice(0, 80) + "…" : h.sql;
+      const sqlLine = document.createElement("div");
+      sqlLine.textContent = sqlShort;
+      div.appendChild(meta);
+      div.appendChild(sqlLine);
+      historyList.appendChild(div);
+    });
+  }
+
+  // ---------- Result view ----------
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentView = tab.getAttribute("data-view");
+      renderResultView();
+    });
+  });
+
+  function renderResultView() {
+    const { columns, rows } = currentResult;
+    if (!columns.length) {
+      tableContainer.innerHTML = "<p style='font-size:0.8rem; color:var(--text-muted); padding:0.6rem; margin:0;'>No columns to display.</p>";
+      return;
+    }
+    if (currentView === "table") {
+      let html = "<table><thead><tr>";
+      columns.forEach(col => { html += "<th>" + escapeHTML(col) + "</th>"; });
+      html += "</tr></thead><tbody>";
+      rows.forEach(row => {
+        html += "<tr>";
+        columns.forEach(col => {
+          const val = row[col] != null ? String(row[col]) : "";
+          html += "<td title=\"" + escapeHTML(val) + "\">" + escapeHTML(val) + "</td>";
+        });
+        html += "</tr>";
+      });
+      html += "</tbody></table>";
+      tableContainer.innerHTML = html;
+    } else if (currentView === "json") {
+      const formatted = JSON.stringify(
+        rows.map(r => {
+          const o = {};
+          columns.forEach(c => { o[c] = r[c]; });
+          return o;
+        }),
+        null,
+        2
+      );
+      tableContainer.innerHTML = "<pre class='raw-output'>" + escapeHTML(formatted) + "</pre>";
+    } else if (currentView === "csv") {
+      const header = columns.join(",");
+      const lines = [header];
+      rows.forEach(row => {
+        const vals = columns.map(c => (row[c] != null ? String(row[c]) : ""));
+        lines.push(vals.join(","));
+      });
+      const text = lines.join("\n");
+      tableContainer.innerHTML = "<pre class='raw-output'>" + escapeHTML(text) + "</pre>";
+    }
+    updateChartButtonState();
+  }
+
+  function clearOutput() {
+    errorDiv.textContent = "";
+    successDiv.textContent = "";
+    statsRow.innerHTML = "";
+    currentResult = { columns: [], rows: [] };
+    tableContainer.innerHTML = "<p style='font-size:0.8rem; color:var(--text-muted); padding:0.6rem; margin:0;'>Run a query to see results here.</p>";
+    queryStatus.textContent = "";
+    suggestionsDiv.innerHTML = "";
+    chartBtn.disabled = true;
+    chartContainer.classList.remove("visible");
+    destroyChart();
+  }
+
+  function showError(msg) {
+    errorDiv.textContent = msg;
+    successDiv.textContent = "";
+  }
+  function showSuccess(msg) {
+    successDiv.textContent = msg;
+    errorDiv.textContent = "";
+  }
+  function escapeHTML(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      switch (c) {
+        case "&": return "&amp;";
+        case "<": return "&lt;";
+        case ">": return "&gt;";
+        case '"': return "&quot;";
+        case "'": return "&#039;";
+        default:  return c;
+      }
+    });
+  }
+
+  // ---------- SQL parsing ----------
+  function parseSQL(sql) {
+    const re = /^\s*SELECT\s+(.+?)\s+FROM\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+WHERE\s+(.+?))?(?:\s+GROUP\s+BY\s+([A-Za-z_][A-Za-z0-9_]*))?(?:\s+ORDER\s+BY\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+(ASC|DESC))?)?\s*;?\s*$/i;
+    const m = sql.match(re);
+    if (!m) {
+      throw new Error("Could not parse SQL. Expected: SELECT ... FROM table [WHERE ...] [GROUP BY col] [ORDER BY col [ASC|DESC]];");
+    }
+    const selectPart = m[1].trim();
+    const table = m[2].trim();
+    const wherePart = m[3] ? m[3].trim() : null;
+    const groupByCol = m[4] ? m[4].trim() : null;
+    const orderByCol = m[5] ? m[5].trim() : null;
+    const orderDir = m[6] ? m[6].trim().toUpperCase() : "ASC";
+
+    const where = wherePart ? parseWhere(wherePart) : null;
+    const groupBy = groupByCol ? { column: groupByCol } : null;
+    const orderBy = orderByCol ? { column: orderByCol, direction: orderDir } : null;
+    const selectItems = parseSelectItems(selectPart);
+    return { table, selectItems, where, groupBy, orderBy };
+  }
+
+  function parseSelectItems(selectPart) {
+    if (selectPart === "*") return [{ type: "star" }];
+    const rawItems = selectPart.split(",").map(s => s.trim()).filter(Boolean);
+    if (rawItems.length === 0) throw new Error("Invalid column list in SELECT clause.");
+
+    const items = [];
+    const aggRe = /^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(\*|[A-Za-z_][A-Za-z0-9_]*)\s*\)(?:\s+AS\s+([A-Za-z_][A-Za-z0-9_]*))?$/i;
+    const colRe = /^([A-Za-z_][A-Za-z0-9_]*)$/;
+
+    for (const raw of rawItems) {
+      const aggMatch = raw.match(aggRe);
+      if (aggMatch) {
+        const func = aggMatch[1].toUpperCase();
+        const arg = aggMatch[2];
+        const alias = aggMatch[3] || null;
+        items.push({ type: "agg", func, arg, alias: alias || `${func}(${arg})` });
+        continue;
+      }
+      const colMatch = raw.match(colRe);
+      if (colMatch) {
+        items.push({ type: "column", name: colMatch[1] });
+        continue;
+      }
+      throw new Error("Unsupported SELECT item: '" + raw + "'. Use columns or aggregates like COUNT(col), SUM(col), AVG(col).");
+    }
+    return items;
+  }
+
+  function parseWhere(wherePart) {
+    const re = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(=|!=|>=|<=|>|<)\s*(.+?)\s*$/;
+    const m = wherePart.match(re);
+    if (!m) {
+      throw new Error("Could not parse WHERE clause. Expected: column OP value with OP in (=, !=, >, <, >=, <=).");
+    }
+    const col = m[1];
+    const op = m[2];
+    const rawVal = m[3].trim();
+    const value = parseValue(rawVal);
+    return { column: col, operator: op, value };
+  }
+
+  function parseValue(rawVal) {
+    if ((rawVal.startsWith("'") && rawVal.endsWith("'")) ||
+        (rawVal.startsWith('"') && rawVal.endsWith('"'))) {
+      return rawVal.slice(1, -1);
+    }
+    const num = Number(rawVal);
+    if (!Number.isNaN(num) && rawVal.match(/^[+-]?\d+(\.\d+)?$/)) {
+      return num;
+    }
+    throw new Error("Invalid literal value in WHERE clause: " + rawVal + ". Strings must be quoted; numbers unquoted.");
+  }
+
+  // ---------- Execution ----------
+  runBtn.addEventListener("click", runQuery);
+
+  function runQuery() {
+    clearOutput();
+    if (!currentTable) {
+      showError("No table loaded. Upload a CSV file or choose a sample dataset first.");
+      return;
+    }
+    const sql = sqlInput.value.trim();
+    if (!sql) {
+      showError("Please enter a SQL query.");
+      return;
+    }
+    let parsed;
+    const start = performance.now();
+    try {
+      parsed = parseSQL(sql);
+      if (parsed.table.toLowerCase() !== currentTable.name.toLowerCase()) {
+        throw new Error("Table '" + parsed.table + "' not found. Loaded table: '" + currentTable.name + "'.");
+      }
+      const execResult = executeQuery(parsed, currentTable);
+      const durationMs = performance.now() - start;
+      currentResult = execResult;
+      renderResultView();
+      const stats = {
+        durationMs: Math.round(durationMs),
+        rowsScanned: currentTable.rows.length,
+        rowsReturned: execResult.rows.length,
+        aggregatesUsed: parsed.selectItems.filter(i => i.type === "agg").map(i => i.func)
+      };
+      renderStats(stats);
+      showSuccess("Query executed successfully. " + execResult.rows.length + " row(s) returned.");
+      queryStatus.textContent = "OK • " + new Date().toLocaleTimeString();
+      addToHistory(sql, stats, null);
+      buildSuggestions(parsed, execResult);
+      evaluateMissions(parsed, execResult);
+    } catch (e) {
+      const durationMs = performance.now() - start;
+      showError(e.message || String(e));
+      queryStatus.textContent = "Query failed.";
+      renderStats({
+        durationMs: Math.round(durationMs),
+        rowsScanned: currentTable ? currentTable.rows.length : 0,
+        rowsReturned: 0,
+        aggregatesUsed: []
+      });
+      addToHistory(sql, {
+        durationMs: Math.round(durationMs),
+        rowsScanned: currentTable ? currentTable.rows.length : 0,
+        rowsReturned: 0,
+        aggregatesUsed: []
+      }, e);
+    }
+  }
+
+  function executeQuery(query, table) {
+    let filtered = table.rows;
+    if (query.where) {
+      if (!table.columns.includes(query.where.column)) {
+        throw new Error("Column '" + query.where.column + "' in WHERE clause does not exist. Available columns: " + table.columns.join(", ") + ".");
+      }
+      filtered = filtered.filter(row => compare(row[query.where.column], query.where.operator, query.where.value));
+    }
+    const hasAgg = query.selectItems.some(i => i.type === "agg");
+    const hasStar = query.selectItems.length === 1 && query.selectItems[0].type === "star";
+    const groupBy = query.groupBy;
+    const orderBy = query.orderBy;
+    let result;
+
+    if (groupBy) {
+      result = executeGroupBy(query.selectItems, groupBy, filtered, table.columns);
+    } else if (hasAgg) {
+      result = executeAggregatesNoGroup(query.selectItems, filtered, table.columns);
+    } else if (hasStar) {
+      const cols = table.columns.slice();
+      const projectedRows = filtered.map(row => {
+        const obj = {};
+        cols.forEach(c => obj[c] = row[c]);
+        return obj;
+      });
+      result = { columns: cols, rows: projectedRows };
+    } else {
+      result = executeProjectionColumns(query.selectItems, filtered, table.columns);
+    }
+    if (orderBy) {
+      result.rows = applyOrderBy(result.rows, result.columns, orderBy);
+    }
+    return result;
+  }
+
+  function compare(cell, op, value) {
+    const cellStr = (cell == null) ? "" : String(cell);
+    if (typeof value === "number") {
+      const cellNum = Number(cellStr);
+      if (Number.isNaN(cellNum)) {
+        throw new Error("Type mismatch: cannot compare non-numeric value '" + cellStr + "' with numeric literal '" + value + "'.");
+      }
+      return applyOperator(cellNum, op, value);
+    } else if (typeof value === "string") {
+      if (op !== "=" && op !== "!=") {
+        throw new Error("String comparisons only support '=' and '!='. Got operator '" + op + "'.");
+      }
+      return applyOperator(cellStr, op, value);
+    } else {
+      throw new Error("Unsupported WHERE value type.");
+    }
+  }
+
+  function applyOperator(left, op, right) {
+    switch (op) {
+      case "=": return left == right;
+      case "!=": return left != right;
+      case ">": return left > right;
+      case "<": return left < right;
+      case ">=": return left >= right;
+      case "<=": return left <= right;
+      default: throw new Error("Unknown operator: " + op);
+    }
+  }
+
+  function executeGroupBy(selectItems, groupBy, rows, allColumns) {
+    const groupCol = groupBy.column;
+    if (!allColumns.includes(groupCol)) {
+      throw new Error("GROUP BY column '" + groupCol + "' does not exist. Available columns: " + allColumns.join(", ") + ".");
+    }
+    const groups = new Map();
+    for (const row of rows) {
+      const key = row[groupCol] ?? "";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    }
+    const hasNonGroupPlain = selectItems.some(item => item.type === "column" && item.name !== groupCol);
+    if (hasNonGroupPlain) {
+      throw new Error("When using GROUP BY, only the group-by column may appear as a plain column in SELECT. Other columns must be used inside aggregate functions.");
+    }
+    const resultRows = [];
+    const resultColumns = [];
+    for (const item of selectItems) {
+      if (item.type === "column") {
+        if (!resultColumns.includes(item.name)) resultColumns.push(item.name);
+      } else if (item.type === "agg") {
+        if (!resultColumns.includes(item.alias)) resultColumns.push(item.alias);
+      }
+    }
+    for (const [key, bucketRows] of groups.entries()) {
+      const rowOut = {};
+      for (const item of selectItems) {
+        if (item.type === "column") rowOut[item.name] = key;
+        else if (item.type === "agg") rowOut[item.alias] = computeAggregate(item.func, item.arg, bucketRows);
+      }
+      resultRows.push(rowOut);
+    }
+    return { columns: resultColumns, rows: resultRows };
+  }
+
+  function executeAggregatesNoGroup(selectItems, rows, allColumns) {
+    const hasPlainColumn = selectItems.some(i => i.type === "column");
+    if (hasPlainColumn) {
+      throw new Error("Cannot mix plain columns and aggregate functions without GROUP BY.");
+    }
+    const resultRow = {};
+    const columns = [];
+    for (const item of selectItems) {
+      if (item.type === "agg") {
+        const val = computeAggregate(item.func, item.arg, rows);
+        resultRow[item.alias] = val;
+        columns.push(item.alias);
+      }
+    }
+    return { columns, rows: [resultRow] };
+  }
+
+  function executeProjectionColumns(selectItems, rows, allColumns) {
+    const cols = [];
+    for (const item of selectItems) {
+      if (item.type === "column") {
+        if (!allColumns.includes(item.name)) {
+          throw new Error("Column '" + item.name + "' in SELECT does not exist. Available columns: " + allColumns.join(", ") + ".");
+        }
+        cols.push(item.name);
+      } else {
+        throw new Error("Aggregate '" + item.func + "(" + item.arg + ")' requires GROUP BY or cannot be mixed with plain columns.");
+      }
+    }
+    const projectedRows = rows.map(row => {
+      const obj = {};
+      cols.forEach(c => obj[c] = row[c]);
+      return obj;
+    });
+    return { columns: cols, rows: projectedRows };
+  }
+
+  function computeAggregate(func, arg, rows) {
+    func = func.toUpperCase();
+    if (func === "COUNT") {
+      if (arg === "*") return rows.length;
+      let count = 0;
+      for (const r of rows) {
+        const v = r[arg];
+        if (v !== undefined && v !== null && v !== "") count++;
+      }
+      return count;
+    }
+    if (!arg || arg === "*") {
+      throw new Error(func + "(*) is not supported; please specify a column.");
+    }
+    const nums = [];
+    for (const r of rows) {
+      const v = r[arg];
+      if (v === undefined || v === null || v === "") continue;
+      const n = Number(v);
+      if (Number.isNaN(n)) {
+        throw new Error("Cannot apply " + func + " to non-numeric values in column '" + arg + "'.");
+      }
+      nums.push(n);
+    }
+    if (nums.length === 0) {
+      if (func === "SUM") return 0;
+      return null;
+    }
+    if (func === "SUM") return nums.reduce((a, b) => a + b, 0);
+    if (func === "AVG") return nums.reduce((a, b) => a + b, 0) / nums.length;
+    if (func === "MIN") return Math.min(...nums);
+    if (func === "MAX") return Math.max(...nums);
+    throw new Error("Unsupported aggregate function: " + func);
+  }
+
+  function applyOrderBy(rows, columns, orderBy) {
+    const col = orderBy.column;
+    const dir = (orderBy.direction || "ASC").toUpperCase();
+    if (!columns.includes(col)) {
+      throw new Error("ORDER BY column '" + col + "' is not in the result set. Result columns: " + columns.join(", ") + ".");
+    }
+    const sorted = [...rows];
+    sorted.sort((a, b) => {
+      const va = a[col];
+      const vb = b[col];
+      const aNum = Number(va);
+      const bNum = Number(vb);
+      let cmp;
+      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+        cmp = aNum - bNum;
+      } else {
+        const sa = String(va ?? "");
+        const sb = String(vb ?? "");
+        if (sa < sb) cmp = -1;
+        else if (sa > sb) cmp = 1;
+        else cmp = 0;
+      }
+      return dir === "DESC" ? -cmp : cmp;
+    });
+    return sorted;
+  }
+
+  // ---------- Stats & suggestions ----------
+  function renderStats(stats) {
+    statsRow.innerHTML = "";
+    const pills = [
+      `⏱ ${stats.durationMs} ms`,
+      `📦 scanned: ${stats.rowsScanned}`,
+      `📊 returned: ${stats.rowsReturned}`
+    ];
+    if (stats.aggregatesUsed && stats.aggregatesUsed.length) {
+      pills.push("🧮 aggs: " + stats.aggregatesUsed.join(", "));
+    }
+    pills.forEach(text => {
+      const span = document.createElement("span");
+      span.className = "stat-pill";
+      span.textContent = text;
+      statsRow.appendChild(span);
+    });
+  }
+
+  function buildSuggestions(parsed, result) {
+    suggestionsDiv.innerHTML = "";
+    const suggestions = [];
+    if (!parsed.where) suggestions.push("Add a WHERE filter");
+    if (!parsed.orderBy && result.rows.length > 1) suggestions.push("Sort results with ORDER BY");
+    const hasAgg = parsed.selectItems.some(i => i.type === "agg");
+    if (hasAgg && !parsed.groupBy) suggestions.push("Try GROUP BY to aggregate per category");
+    if (!hasAgg) suggestions.push("Experiment with COUNT, SUM, or AVG");
+    const unique = [...new Set(suggestions)].slice(0, 3);
+    unique.forEach(text => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = text;
+      chip.addEventListener("click", () => applySuggestion(text, parsed));
+      suggestionsDiv.appendChild(chip);
+    });
+  }
+
+  function applySuggestion(text, parsed) {
+    let sql = sqlInput.value.trim();
+    const table = parsed.table;
+    const cols = currentTable ? currentTable.columns : [];
+    if (text === "Add a WHERE filter" && cols.length) {
+      const col = cols[0];
+      if (/where/i.test(sql)) return;
+      sql = sql.replace(/;?\s*$/, "");
+      sql += ` WHERE ${col} = '${currentTable.rows[0][col] || "value"}';`;
+      sqlInput.value = sql;
+    } else if (text === "Sort results with ORDER BY" && cols.length) {
+      const col = cols[0];
+      if (/order\s+by/i.test(sql)) return;
+      sql = sql.replace(/;?\s*$/, "");
+      sql += ` ORDER BY ${col} ASC;`;
+      sqlInput.value = sql;
+    } else if (text === "Try GROUP BY to aggregate per category" && cols.length) {
+      const col = cols[0];
+      sqlInput.value = `SELECT ${col}, COUNT(*) FROM ${table} GROUP BY ${col} ORDER BY COUNT(*) DESC;`;
+    } else if (text === "Experiment with COUNT, SUM, or AVG" && cols.length) {
+      sqlInput.value = `SELECT COUNT(*) FROM ${table};`;
+    }
+    sqlInput.focus();
+  }
+
+  // ---------- Explain query ----------
+  explainBtn.addEventListener("click", () => {
+    if (!currentTable) {
+      showError("Load a dataset first to explain a query.");
+      return;
+    }
+    const sql = sqlInput.value.trim();
+    if (!sql) {
+      showError("Type a query to explain.");
+      return;
+    }
+    try {
+      const parsed = parseSQL(sql);
+      const explanation = explainParsedQuery(parsed);
+      showSuccess(explanation);
+      errorDiv.textContent = "";
+    } catch (e) {
+      showError("Cannot explain query: " + (e.message || e));
+    }
+  });
+
+  function explainParsedQuery(p) {
+    const parts = [];
+    const colsPart = p.selectItems.map(i => {
+      if (i.type === "star") return "all columns";
+      if (i.type === "column") return i.name;
+      if (i.type === "agg") return i.alias;
+    }).join(", ");
+    parts.push(`Selecting ${colsPart || "columns"} from table '${p.table}'.`);
+    if (p.where) {
+      parts.push(`Filtering rows where '${p.where.column}' ${p.where.operator} ${JSON.stringify(p.where.value)}.`);
+    } else {
+      parts.push("No WHERE filter is applied (all rows are considered).");
+    }
+    if (p.groupBy) {
+      parts.push(`Grouping rows by '${p.groupBy.column}'. Aggregates are computed per group.`);
+    }
+    const aggNames = p.selectItems.filter(i => i.type === "agg").map(i => i.func);
+    if (aggNames.length) {
+      parts.push("Using aggregate functions: " + aggNames.join(", ") + ".");
+    }
+    if (p.orderBy) {
+      parts.push(`Sorting the final result by '${p.orderBy.column}' in ${p.orderBy.direction || "ASC"} order.`);
+    } else {
+      parts.push("No ORDER BY clause (result order is based on input order).");
+    }
+    return parts.join(" ");
+  }
+
+  // ---------- Keyboard shortcuts ----------
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+    const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+    if (ctrlOrCmd && e.key === "Enter") {
+      e.preventDefault();
+      runQuery();
+    }
+    if (ctrlOrCmd && (e.key === "l" || e.key === "L")) {
+      e.preventDefault();
+      sqlInput.focus();
+      sqlInput.select();
+    }
+    if (ctrlOrCmd && e.key === "/") {
+      e.preventDefault();
+      setCheatPanel(!cheatPanel.classList.contains("open"));
+    }
+  });
+
+  // ---------- Charts ----------
+  function destroyChart() {
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+  }
+
+  function detectChartableData() {
+    const cols = currentResult.columns;
+    const rows = currentResult.rows;
+    if (!cols.length || !rows.length) return null;
+
+    // find first category (string/mixed) and number column
+    let catCol = null, numCol = null;
+    for (const col of cols) {
+      const values = rows.map(r => r[col]);
+      const numericCount = values.filter(v => v !== null && v !== "" && !Number.isNaN(Number(v))).length;
+      const nonEmptyCount = values.filter(v => v !== null && v !== "").length;
+      if (!catCol && nonEmptyCount > 0 && (numericCount < nonEmptyCount)) {
+        catCol = col;
+      }
+      if (!numCol && numericCount > 0 && numericCount === nonEmptyCount) {
+        numCol = col;
+      }
+    }
+    if (catCol && numCol) return { catCol, numCol };
+    return null;
+  }
+
+  function updateChartButtonState() {
+    const chartable = detectChartableData();
+    chartBtn.disabled = !chartable;
+    if (!chartable) {
+      chartContainer.classList.remove("visible");
+      destroyChart();
+      chartTitle.textContent = "Chart will appear here when data has a category + numeric column.";
+    }
+  }
+
+  chartBtn.addEventListener("click", () => {
+    const chartable = detectChartableData();
+    if (!chartable) return;
+    const { catCol, numCol } = chartable;
+    const labels = currentResult.rows.map(r => String(r[catCol]));
+    const values = currentResult.rows.map(r => Number(r[numCol]));
+    destroyChart();
+    const ctx = chartCanvas.getContext("2d");
+    chartInstance = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: numCol,
+          data: values
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            labels: { color: getComputedStyle(document.documentElement).getPropertyValue("--text-main") }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-muted")
+            }
+          },
+          y: {
+            ticks: {
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-muted")
+            },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+    chartTitle.textContent = `Bar chart: ${catCol} vs ${numCol}`;
+    chartContainer.classList.add("visible");
+  });
+
+  // ---------- Init ----------
+  function init() {
+    initTheme();
+    refreshFact();
+    buildSampleQueryChips();
+    loadSavedQueries();
+    renderHistory();
+    renderMissions();
+  }
+  init();
+</script>
+</body>
+</html>
